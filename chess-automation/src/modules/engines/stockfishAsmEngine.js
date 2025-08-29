@@ -21,7 +21,7 @@ export class StockfishAsmEngine extends BaseEngine {
       console.log('Initializing Stockfish ASM.js engine...');
 
       // Path to stockfish executable or script
-      const stockfishPath = this.config.path || 'stockfish';
+      const stockfishPath = this.config.path || '/usr/games/stockfish';
 
       // Spawn stockfish process
       this.process = spawn(stockfishPath, [], {

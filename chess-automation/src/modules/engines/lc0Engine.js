@@ -26,7 +26,7 @@ export class Lc0Engine extends BaseEngine {
       if (this.config.weightsPath) {
         try {
           await fs.access(this.config.weightsPath);
-        } catch (_error) {
+        } catch {
           console.warn(`Weights file not found: ${this.config.weightsPath}`);
           console.log('Using default network. To use Maia, download weights from:');
           console.log('https://github.com/CSSLab/maia-chess/releases');

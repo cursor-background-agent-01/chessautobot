@@ -17,7 +17,7 @@ export class ChessAutomation {
   constructor(config = {}) {
     this.config = {
       headless: false,
-      engineType: ENGINE_TYPES.STOCKFISH_WASM,
+      engineType: ENGINE_TYPES.STOCKFISH,
       useEnginePool: false, // Use engine pool instead of single engine
       enginePool: 'stockfish', // Which pool to use
       engineSelection: 'random', // How to select engines

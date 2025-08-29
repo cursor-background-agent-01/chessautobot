@@ -32,9 +32,7 @@ export class DualAnalysis {
 
         const manager = new EngineManager({
           engine: engineId.includes('stockfish')
-            ? engineId.includes('native')
-              ? 'stockfish-native'
-              : 'stockfish-wasm'
+            ? 'stockfish-native'
             : engineId.includes('maia') || engineId.includes('lc0')
               ? 'lc0'
               : engineId,

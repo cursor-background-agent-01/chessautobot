@@ -185,11 +185,7 @@ export const ENGINE_POOLS = {
   stockfish: ['stockfish-native-max'],
 
   // All Stockfish variations
-  'stockfish-varied': [
-    'stockfish-native-12',
-    'stockfish-native-17',
-    'stockfish-native-max',
-  ],
+  'stockfish-varied': ['stockfish-native-12', 'stockfish-native-17', 'stockfish-native-max'],
 
   // All Maia variations
   maia: ['maia-1100', 'maia-1500', 'maia-1900'],

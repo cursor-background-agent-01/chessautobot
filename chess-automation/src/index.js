@@ -5,7 +5,11 @@
 
 import { ChessAutomation } from './chessAutomation.js';
 import { ENGINE_TYPES } from './config/constants.js';
-import { ENGINE_POOLS, ENGINES_CONFIG, ENGINE_SETUP_INSTRUCTIONS } from './config/engines.config.js';
+import {
+  ENGINE_POOLS,
+  ENGINES_CONFIG,
+  ENGINE_SETUP_INSTRUCTIONS,
+} from './config/engines.config.js';
 
 // Command line argument parsing
 const args = process.argv.slice(2);

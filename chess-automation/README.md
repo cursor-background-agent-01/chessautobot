@@ -54,6 +54,30 @@ chess-automation/
 
 ## Installation
 
+### Windows
+
+```batch
+# Clone or create the project
+cd chess-automation
+
+# Install dependencies
+npm install
+
+# Install Chess Engines (run as Administrator recommended)
+# For Stockfish:
+scripts\setup-stockfish.bat
+
+# For Lc0 and Maia (human-like play):
+scripts\setup-lc0-maia.bat
+
+# Or use Chocolatey (if installed):
+choco install stockfish
+```
+
+📖 **[Detailed Windows Setup Guide](./WINDOWS_SETUP.md)** - Complete instructions for Windows users
+
+### Linux/macOS
+
 ```bash
 # Clone or create the project
 cd chess-automation

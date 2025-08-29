@@ -1,0 +1,30 @@
+{
+  "name": "chess-automation",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["chess", "automation", "puppeteer", "stockfish"],
+  "author": "",
+  "license": "ISC",
+  "description": "Modular chess automation system for Chess.com using Puppeteer and various chess engines",
+  "dependencies": {
+    "chess.js": "^1.0.0-beta.8",
+    "puppeteer": "^23.11.1",
+    "stockfish.wasm": "^0.10.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.2",
+    "prettier": "^3.4.2"
+  }
+}

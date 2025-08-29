@@ -125,7 +125,6 @@ export class EnginePoolManager {
    * Select next engine sequentially
    */
   selectSequentialEngine() {
-    // eslint-disable-next-line prefer-destructuring
     const engineId = this.poolEngines[this.poolIndex];
     this.poolIndex = (this.poolIndex + 1) % this.poolEngines.length;
     return engineId;

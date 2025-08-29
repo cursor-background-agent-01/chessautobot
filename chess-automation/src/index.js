@@ -5,7 +5,7 @@
 
 import { ChessAutomation } from './chessAutomation.js';
 import { ENGINE_TYPES } from './config/constants.js';
-import { ENGINE_POOLS, ENGINES_CONFIG, MAIA_SETUP } from './config/engines.config.js';
+import { ENGINE_POOLS, ENGINES_CONFIG, ENGINE_SETUP_INSTRUCTIONS } from './config/engines.config.js';
 
 // Command line argument parsing
 const args = process.argv.slice(2);
@@ -20,6 +20,7 @@ const options = {
   depth: 15,
   showEval: true,
   highlight: true,
+  dualAnalysis: false,
 };
 
 // Parse arguments
@@ -31,6 +32,10 @@ for (let i = 0; i < args.length; i++) {
     case '--pool':
       options.usePool = true;
       options.pool = args[++i] || 'stockfish';
+      // Special handling for 'all' pool in manual mode
+      if (options.pool === 'all' && !options.autoPlay) {
+        options.dualAnalysis = true;
+      }
       break;
     case '--selection':
       options.selection = args[++i] || 'random';
@@ -40,6 +45,8 @@ for (let i = 0; i < args.length; i++) {
       break;
     case '--auto':
       options.autoPlay = true;
+      // Disable dual analysis in auto mode
+      options.dualAnalysis = false;
       break;
     case '--headless':
       options.headless = true;
@@ -61,8 +68,8 @@ for (let i = 0; i < args.length; i++) {
       listPools();
       process.exit(0);
       break;
-    case '--maia-setup':
-      console.log(MAIA_SETUP);
+    case '--setup-help':
+      console.log(ENGINE_SETUP_INSTRUCTIONS);
       process.exit(0);
       break;
     case '--help':
@@ -106,6 +113,7 @@ SINGLE ENGINE MODE:
 MULTIPLE ENGINE MODE:
   --pool <name>         Use engine pool for random/varied play
                         Available pools: ${Object.keys(ENGINE_POOLS).join(', ')}
+                        Special: --pool all in manual mode shows DUAL ANALYSIS
   --selection <type>    How to select engines: random, sequential, weighted, single
                         Default: random
   --switch-every <n>    Switch engine every N moves (default: 1, 0 = never)
@@ -120,7 +128,7 @@ GENERAL OPTIONS:
 INFO COMMANDS:
   --list-engines        List all available engines
   --list-pools          List all engine pools
-  --maia-setup          Show instructions for setting up Maia
+  --setup-help          Show instructions for setting up engines
   --help                Show this help message
 
 EXAMPLES:
@@ -130,14 +138,19 @@ EXAMPLES:
   npm start --engine maia-1500                # Maia 1500 (human-like)
   npm start --engine lc0-default --depth 20   # Lc0 with depth 20
 
-  # Multiple engines (pool mode)
-  npm start --pool maia                       # Random Maia (1100/1500/1900)
-  npm start --pool all --selection random     # All engines randomly
+  # DUAL ANALYSIS (Manual mode with --pool all)
+  npm start --pool all                        # Shows BOTH Stockfish & Maia suggestions!
+  npm run play:dual                           # Same as above (shortcut)
+
+  # Multiple engines AUTO-PLAY (pool mode)
+  npm start --pool all --auto                 # Semi-random mix of all engines
+  npm start --pool maia --auto                # Random Maia (1100/1500/1900)
   npm start --pool strong --switch-every 5    # Strong engines, switch every 5 moves
   npm start --pool human-like --auto          # Human-like play with auto-play
 
   # Custom configurations
-  npm start --pool maia-varied --selection weighted
+  npm start --pool stockfish-varied --auto    # Stockfish with varying skill levels
+  npm start --pool maia-varied --selection weighted --auto
   npm start --pool test --selection sequential --switch-every 3
 
 ENGINE POOLS:
@@ -191,6 +204,7 @@ async function main() {
     enginePool: options.pool,
     engineSelection: options.selection,
     engineSwitchEvery: options.switchEvery,
+    useDualAnalysis: options.dualAnalysis,
     autoPlay: options.autoPlay,
     headless: options.headless,
     engineDepth: options.depth,
@@ -240,41 +254,82 @@ async function main() {
 
             const analysis = await automation.analyzePosition();
 
-            console.log('FEN:', analysis.fen);
-            if (analysis.engineInfo) {
-              console.log(`Engine: ${analysis.engineInfo.name} (${analysis.engineInfo.id})`);
-            }
-            console.log('Best move:', analysis.analysis.bestMove);
-            console.log('Evaluation:', analysis.analysis.evaluation.toFixed(2));
-            console.log('\nTop 3 moves:');
+            if (analysis.type === 'dual') {
+              // Dual analysis output
+              console.log('FEN:', analysis.fen);
+              console.log('\n=== DUAL ENGINE ANALYSIS ===');
 
-            analysis.candidates.slice(0, 3).forEach((move, i) => {
-              console.log(`  ${i + 1}. ${move.move} (${move.evaluation.toFixed(2)})`);
-            });
-
-            // Highlight best move
-            if (options.highlight) {
-              await automation.uiHighlighter.highlightMove(analysis.analysis.bestMove);
-            }
-
-            // Show evaluation
-            if (options.showEval) {
-              const evalData = {
-                score: analysis.analysis.evaluation,
-                bestMove: analysis.analysis.bestMove,
-                depth: analysis.analysis.depth,
-                alternatives: analysis.candidates.slice(1, 3).map((c) => ({
-                  move: c.move,
-                  score: c.evaluation,
-                })),
-              };
-
-              // Add engine info if using pool
-              if (analysis.engineInfo) {
-                evalData.engine = analysis.engineInfo.name;
+              for (const [engineName, result] of Object.entries(analysis.dualAnalysis.engines)) {
+                console.log(`\n${engineName.toUpperCase()}:`);
+                console.log(`  Move: ${result.bestMove}`);
+                console.log(`  Eval: ${result.evaluation.toFixed(2)}`);
+                console.log(`  Depth: ${result.depth}`);
+                if (result.candidates && result.candidates.length > 1) {
+                  console.log(
+                    `  Alt: ${result.candidates
+                      .slice(1, 3)
+                      .map((c) => `${c.move} (${c.evaluation.toFixed(1)})`)
+                      .join(', ')}`
+                  );
+                }
               }
 
-              await automation.uiHighlighter.showEvaluation(evalData);
+              if (analysis.dualAnalysis.summary) {
+                const { summary } = analysis.dualAnalysis;
+                if (summary.consensusStrength > 0.5) {
+                  console.log(
+                    `\n✓ Consensus: ${summary.consensusMove} (${Math.round(summary.consensusStrength * 100)}% agree)`
+                  );
+                } else {
+                  console.log(
+                    `\n⚠ Engines disagree: ${summary.uniqueMoves} different moves suggested`
+                  );
+                }
+              }
+            } else {
+              // Single or pool analysis output
+              console.log('FEN:', analysis.fen);
+              if (analysis.engineInfo) {
+                console.log(`Engine: ${analysis.engineInfo.name} (${analysis.engineInfo.id})`);
+              }
+              console.log('Best move:', analysis.analysis.bestMove);
+              console.log('Evaluation:', analysis.analysis.evaluation.toFixed(2));
+              console.log('\nTop 3 moves:');
+
+              analysis.candidates.slice(0, 3).forEach((move, i) => {
+                console.log(`  ${i + 1}. ${move.move} (${move.evaluation.toFixed(2)})`);
+              });
+            }
+
+            // Highlighting and evaluation display
+            if (analysis.type === 'dual') {
+              // Dual analysis already shows its own visualization
+              // No additional highlighting needed as it's handled in analyzePosition
+            } else {
+              // Single or pool analysis - show traditional highlighting
+              if (options.highlight && analysis.analysis) {
+                await automation.uiHighlighter.highlightMove(analysis.analysis.bestMove);
+              }
+
+              // Show evaluation
+              if (options.showEval && analysis.analysis) {
+                const evalData = {
+                  score: analysis.analysis.evaluation,
+                  bestMove: analysis.analysis.bestMove,
+                  depth: analysis.analysis.depth,
+                  alternatives: analysis.candidates.slice(1, 3).map((c) => ({
+                    move: c.move,
+                    score: c.evaluation,
+                  })),
+                };
+
+                // Add engine info if using pool
+                if (analysis.engineInfo) {
+                  evalData.engine = analysis.engineInfo.name;
+                }
+
+                await automation.uiHighlighter.showEvaluation(evalData);
+              }
             }
           }
 

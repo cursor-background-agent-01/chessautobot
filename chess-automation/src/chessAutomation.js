@@ -7,9 +7,11 @@ import puppeteer from 'puppeteer';
 import { FenExtractor } from './modules/fenExtractor.js';
 import { EngineManager } from './modules/engineManager.js';
 import { EnginePoolManager } from './modules/enginePoolManager.js';
+import { DualAnalysis } from './modules/dualAnalysis.js';
 import { MoveExecutor } from './modules/moveExecutor.js';
 import { UIHighlighter } from './modules/uiHighlighter.js';
 import { CHESS_COM_URL, ENGINE_TYPES } from './config/constants.js';
+import { DUAL_ANALYSIS_ENGINES } from './config/engines.config.js';
 
 export class ChessAutomation {
   constructor(config = {}) {
@@ -20,6 +22,8 @@ export class ChessAutomation {
       enginePool: 'stockfish', // Which pool to use
       engineSelection: 'random', // How to select engines
       engineSwitchEvery: 1, // Switch engine every N moves
+      useDualAnalysis: false, // Use dual analysis in manual mode
+      dualEngines: DUAL_ANALYSIS_ENGINES, // Engines for dual analysis
       showEvaluation: true,
       highlightMoves: true,
       autoPlay: false,
@@ -33,6 +37,7 @@ export class ChessAutomation {
     this.fenExtractor = null;
     this.engineManager = null;
     this.enginePoolManager = null;
+    this.dualAnalysis = null;
     this.moveExecutor = null;
     this.uiHighlighter = null;
     this.isPlaying = false;
@@ -79,7 +84,15 @@ export class ChessAutomation {
       this.uiHighlighter = new UIHighlighter(this.page);
 
       // Initialize engine manager or pool
-      if (this.config.useEnginePool) {
+      if (this.config.useDualAnalysis && !this.config.autoPlay) {
+        // Use dual analysis for manual mode
+        this.dualAnalysis = new DualAnalysis({
+          engines: this.config.dualEngines,
+          depth: this.config.engineDepth,
+          timeLimit: this.config.engineTime,
+        });
+        await this.dualAnalysis.init();
+      } else if (this.config.useEnginePool) {
         // Use engine pool for multiple engines
         this.enginePoolManager = new EnginePoolManager({
           pool: this.config.enginePool,
@@ -326,7 +339,21 @@ export class ChessAutomation {
   async analyzePosition() {
     const fen = await this.fenExtractor.extractFEN();
 
-    if (this.config.useEnginePool) {
+    if (this.config.useDualAnalysis && !this.config.autoPlay) {
+      // Use dual analysis for comprehensive evaluation
+      const dualResult = await this.dualAnalysis.analyzePosition(fen);
+
+      // Show dual analysis visualization
+      if (this.config.highlightMoves && this.uiHighlighter) {
+        await this.uiHighlighter.showDualAnalysis(dualResult);
+      }
+
+      return {
+        fen,
+        dualAnalysis: dualResult,
+        type: 'dual',
+      };
+    } else if (this.config.useEnginePool) {
       const analysis = await this.enginePoolManager.analyzePosition(fen);
       const candidates = await this.enginePoolManager.getCandidateMoves(fen, 5);
       return {
@@ -334,6 +361,7 @@ export class ChessAutomation {
         analysis,
         candidates,
         engineInfo: this.enginePoolManager.getCurrentEngineInfo(),
+        type: 'pool',
       };
     } else {
       const analysis = await this.engineManager.analyzePosition(fen);
@@ -342,6 +370,7 @@ export class ChessAutomation {
         fen,
         analysis,
         candidates,
+        type: 'single',
       };
     }
   }
@@ -357,7 +386,12 @@ export class ChessAutomation {
 
       if (this.uiHighlighter) {
         await this.uiHighlighter.hideEvaluation();
+        await this.uiHighlighter.hideDualAnalysis();
         await this.uiHighlighter.clearHighlights();
+      }
+
+      if (this.dualAnalysis) {
+        await this.dualAnalysis.cleanup();
       }
 
       if (this.enginePoolManager) {

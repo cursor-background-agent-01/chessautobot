@@ -4,10 +4,22 @@ A modular Node.js chess automation system that can play on Chess.com using Puppe
 
 ## Features
 
+- **Semi-Random Engine Selection with Skill Variations**
+  - Stockfish with skill levels 10, 12, 15, 17, 18, 20
+  - Maia with temperature variations for randomness
+  - Weighted selection in the 'all' pool for natural variation
+  
+- **Dual Engine Analysis (Manual Mode)**
+  - Shows BOTH Stockfish (best) and Maia (human-like) suggestions
+  - Color-coded moves: Green for Stockfish, Orange for Maia
+  - Consensus detection when engines agree
+  - Use `--pool all` in manual mode to activate
+
 - **Multiple Engine Support**: Run multiple engines with random selection
-  - Stockfish (WASM and Native)
+  - Stockfish (WASM and Native) with skill levels
   - Leela Chess Zero (Lc0)
   - Maia (Human-like play at 1100, 1500, 1900 ELO levels)
+  
 - **Engine Pools**: Mix and match engines for varied playing styles
 - **Dynamic Engine Switching**: Change engines mid-game
 - **Modular Architecture**: Clean separation of concerns with dedicated modules
@@ -108,33 +120,39 @@ OPTIONS:
 ### Quick Start Examples
 
 ```bash
+# 🎯 THE ULTIMATE EXPERIENCE - DUAL ANALYSIS (Manual Mode)
+npm start --pool all        # Shows BOTH Stockfish & Maia suggestions!
+npm run play:dual           # Same as above (shortcut)
+
+# 🤖 SEMI-RANDOM AUTO-PLAY with skill variations
+npm start --pool all --auto # Random mix: Stockfish 10-20, Maia variations, Lc0
+npm run play:all            # Same as above (shortcut)
+
 # Human-like play with Maia
 npm run play:human          # Interactive mode
 npm run play:maia           # Auto-play with Maia pool
-
-# Random engine selection from all available
-npm run play:random
 
 # Traditional single engine
 npm start                    # Stockfish WASM
 npm start --engine maia-1500 # Maia 1500 ELO
 
 # Advanced configurations
-npm start --pool strong --switch-every 5
-npm start --pool maia-varied --selection weighted
+npm start --pool stockfish-varied --auto  # Stockfish with varying skills
+npm start --pool maia-varied --selection weighted --auto
 ```
 
 ### Engine Pools
 
 | Pool | Description | Engines |
 |------|-------------|---------|
-| `stockfish` | Traditional strong play | stockfish-wasm |
+| `all` ⭐ | **SPECIAL: Manual=Dual Analysis, Auto=Semi-Random** | Weighted mix of all engines with skill variations |
+| `stockfish` | Traditional strong play | stockfish-wasm-max |
+| `stockfish-varied` | Stockfish with skill levels | Skills 10, 12, 15, 17, 18, 20 |
 | `maia` | Human-like at different levels | maia-1100, maia-1500, maia-1900 |
-| `maia-varied` | Weighted towards beginner | More maia-1100, some 1500/1900 |
-| `all` | Everything available | All enabled engines |
-| `strong` | Maximum strength | stockfish-native, lc0-default |
-| `human-like` | Realistic human play | Mostly Maia with occasional strong |
-| `test` | Development testing | stockfish-wasm, maia-1100 |
+| `maia-varied` | Maia with temperature variations | Random/Focused versions |
+| `strong` | Maximum strength | stockfish-native-max, lc0, maia-1900-strong |
+| `human-like` | Realistic human play | Mostly Maia with occasional Stockfish |
+| `beginner` | Beginner friendly | Low skill Stockfish + Maia 1100 |
 
 ## API Usage
 

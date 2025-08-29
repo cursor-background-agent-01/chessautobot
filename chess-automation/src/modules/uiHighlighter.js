@@ -25,6 +25,13 @@ export class UIHighlighter {
   }
 
   /**
+   * Set custom highlight colors for engines
+   */
+  setEngineColors(colors) {
+    this.highlightStyles = { ...this.highlightStyles, ...colors };
+  }
+
+  /**
    * Inject CSS styles for highlighting
    */
   async injectStyles() {
@@ -348,5 +355,192 @@ export class UIHighlighter {
     setTimeout(() => {
       this.flashSquare(to, '#00ff00', 300);
     }, 300);
+  }
+
+  /**
+   * Display dual analysis with color-coded moves
+   * @param {Object} dualAnalysis - Analysis from multiple engines
+   */
+  async showDualAnalysis(dualAnalysis) {
+    await this.clearHighlights();
+
+    // Inject enhanced evaluation display
+    await this.page.evaluate((analysis) => {
+      // Create or update dual analysis panel
+      let panel = document.querySelector('.dual-analysis-panel');
+      if (!panel) {
+        panel = document.createElement('div');
+        panel.className = 'dual-analysis-panel';
+        panel.style.cssText = `
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          background: rgba(0, 0, 0, 0.9);
+          color: white;
+          padding: 15px;
+          border-radius: 8px;
+          font-family: monospace;
+          z-index: 10000;
+          min-width: 300px;
+          max-width: 400px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        `;
+        document.body.appendChild(panel);
+      }
+
+      let html = '<h3 style="margin: 0 0 10px 0; font-size: 16px;">🤖 Engine Analysis</h3>';
+
+      // Show each engine's suggestion
+      for (const [engineName, result] of Object.entries(analysis.engines)) {
+        const color = result.color || '#ffffff';
+        const evalText =
+          result.evaluation > 0 ? `+${result.evaluation.toFixed(2)}` : result.evaluation.toFixed(2);
+
+        html += `
+          <div style="margin-bottom: 12px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; border-left: 3px solid ${color};">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: ${color}; font-weight: bold;">${engineName.toUpperCase()}</span>
+              <span style="color: #888; font-size: 12px;">Depth ${result.depth}</span>
+            </div>
+            <div style="margin-top: 5px;">
+              <span style="font-size: 18px; color: ${color};">${result.bestMove}</span>
+              <span style="margin-left: 10px; color: #ccc;">${evalText}</span>
+            </div>
+            ${
+              result.candidates && result.candidates.length > 1
+                ? `
+              <div style="margin-top: 5px; font-size: 12px; color: #888;">
+                Alt: ${result.candidates
+                  .slice(1, 3)
+                  .map((c) => `${c.move} (${c.eval.toFixed(1)})`)
+                  .join(', ')}
+              </div>
+            `
+                : ''
+            }
+          </div>
+        `;
+      }
+
+      // Show consensus if engines agree
+      if (analysis.summary && analysis.summary.consensusStrength > 0.5) {
+        html += `
+          <div style="margin-top: 10px; padding: 8px; background: rgba(0,255,0,0.1); border-radius: 4px;">
+            <span style="color: #00ff00;">✓ Consensus: ${analysis.summary.consensusMove}</span>
+            <span style="color: #888; font-size: 12px; margin-left: 10px;">
+              ${Math.round(analysis.summary.consensusStrength * 100)}% agree
+            </span>
+          </div>
+        `;
+      } else if (analysis.summary) {
+        html += `
+          <div style="margin-top: 10px; padding: 8px; background: rgba(255,255,0,0.1); border-radius: 4px;">
+            <span style="color: #ffff00;">⚠ Engines disagree</span>
+            <span style="color: #888; font-size: 12px; margin-left: 10px;">
+              ${analysis.summary.uniqueMoves} different moves
+            </span>
+          </div>
+        `;
+      }
+
+      panel.innerHTML = html;
+    }, dualAnalysis);
+
+    // Highlight moves with different colors
+    if (dualAnalysis.engines) {
+      const moves = new Map();
+
+      // Collect unique moves with their colors
+      for (const [engineName, result] of Object.entries(dualAnalysis.engines)) {
+        if (result && result.bestMove) {
+          if (!moves.has(result.bestMove)) {
+            moves.set(result.bestMove, {
+              engines: [],
+              color: result.color,
+            });
+          }
+          moves.get(result.bestMove).engines.push(engineName);
+        }
+      }
+
+      // Highlight each unique move
+      for (const [move, data] of moves) {
+        const to = move.substring(2, 4);
+        await this.highlightSquareWithColor(to, data.color, data.engines.join(' & '));
+      }
+    }
+  }
+
+  /**
+   * Highlight square with custom color
+   * @param {string} square - Square to highlight
+   * @param {string} color - Color to use
+   * @param {string} label - Optional label
+   */
+  async highlightSquareWithColor(square, color, label = '') {
+    const { file, rank } = this.squareToCoordinates(square);
+    const squareNotation = `${file}${rank}`;
+
+    await this.page.evaluate(
+      (sq, col, lbl) => {
+        if (window.chessHighlighter) {
+          // Remove existing highlight
+          window.chessHighlighter.clearSquareHighlight(sq);
+
+          const squareElement = document.querySelector(`.square-${sq}`);
+          if (!squareElement) return;
+
+          const highlight = document.createElement('div');
+          highlight.className = 'chess-highlight custom-color';
+          highlight.style.cssText = `
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          z-index: 10;
+          border-radius: 3px;
+          background-color: ${col}40;
+          border: 3px solid ${col};
+        `;
+
+          if (lbl) {
+            const labelDiv = document.createElement('div');
+            labelDiv.style.cssText = `
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: ${col};
+            color: black;
+            padding: 2px 4px;
+            border-radius: 2px;
+            font-size: 10px;
+            font-weight: bold;
+          `;
+            labelDiv.textContent = lbl.substring(0, 1).toUpperCase();
+            highlight.appendChild(labelDiv);
+          }
+
+          highlight.dataset.square = sq;
+          squareElement.appendChild(highlight);
+
+          window.chessHighlighter.highlights.set(sq, highlight);
+        }
+      },
+      squareNotation,
+      color,
+      label
+    );
+  }
+
+  /**
+   * Hide dual analysis panel
+   */
+  async hideDualAnalysis() {
+    await this.page.evaluate(() => {
+      const panel = document.querySelector('.dual-analysis-panel');
+      if (panel) {
+        panel.remove();
+      }
+    });
   }
 }

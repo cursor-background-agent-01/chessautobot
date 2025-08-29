@@ -1,14 +1,20 @@
 /**
- * Example usage of the Chess Automation System
+ * Chess Automation System - Entry Point
+ * Supports multiple engines with flexible configuration
  */
 
 import { ChessAutomation } from './chessAutomation.js';
 import { ENGINE_TYPES } from './config/constants.js';
+import { ENGINE_POOLS, ENGINES_CONFIG, MAIA_SETUP } from './config/engines.config.js';
 
 // Command line argument parsing
 const args = process.argv.slice(2);
 const options = {
   engine: ENGINE_TYPES.STOCKFISH_WASM,
+  usePool: false,
+  pool: 'stockfish',
+  selection: 'random',
+  switchEvery: 1,
   autoPlay: false,
   headless: false,
   depth: 15,
@@ -21,6 +27,16 @@ for (let i = 0; i < args.length; i++) {
   switch (args[i]) {
     case '--engine':
       options.engine = args[++i] || ENGINE_TYPES.STOCKFISH_WASM;
+      break;
+    case '--pool':
+      options.usePool = true;
+      options.pool = args[++i] || 'stockfish';
+      break;
+    case '--selection':
+      options.selection = args[++i] || 'random';
+      break;
+    case '--switch-every':
+      options.switchEvery = parseInt(args[++i]) || 1;
       break;
     case '--auto':
       options.autoPlay = true;
@@ -37,10 +53,43 @@ for (let i = 0; i < args.length; i++) {
     case '--no-highlight':
       options.highlight = false;
       break;
+    case '--list-engines':
+      listEngines();
+      process.exit(0);
+      break;
+    case '--list-pools':
+      listPools();
+      process.exit(0);
+      break;
+    case '--maia-setup':
+      console.log(MAIA_SETUP);
+      process.exit(0);
+      break;
     case '--help':
       showHelp();
       process.exit(0);
   }
+}
+
+function listEngines() {
+  console.log('\n=== Available Engines ===\n');
+  Object.entries(ENGINES_CONFIG).forEach(([id, config]) => {
+    const status = config.enabled ? '✓' : '✗';
+    console.log(`${status} ${id.padEnd(20)} - ${config.name}`);
+    if (config.type === 'lc0' && config.config.weightsPath) {
+      console.log(`    Weights: ${config.config.weightsPath}`);
+    }
+  });
+  console.log('\n✓ = enabled, ✗ = disabled');
+}
+
+function listPools() {
+  console.log('\n=== Engine Pools ===\n');
+  Object.entries(ENGINE_POOLS).forEach(([name, engines]) => {
+    console.log(`${name}:`);
+    console.log(`  Engines: ${engines.join(', ')}`);
+    console.log('');
+  });
 }
 
 function showHelp() {
@@ -49,31 +98,99 @@ Chess Automation System - Play chess on Chess.com with AI assistance
 
 Usage: npm start [options]
 
-Options:
-  --engine <type>    Chess engine to use (stockfish-wasm, stockfish, lc0, maia)
-                     Default: stockfish-wasm
-  --auto             Enable auto-play mode
-  --headless         Run browser in headless mode
-  --depth <n>        Engine search depth (default: 15)
-  --no-eval          Disable evaluation display
-  --no-highlight     Disable move highlighting
-  --help             Show this help message
+SINGLE ENGINE MODE:
+  --engine <type>       Chess engine to use (default: stockfish-wasm)
+                        Examples: stockfish-wasm, stockfish-native, lc0-default,
+                                 maia-1100, maia-1500, maia-1900
 
-Examples:
-  npm start                           # Interactive mode with Stockfish WASM
-  npm start --auto                    # Auto-play mode
-  npm start --engine stockfish --depth 20  # Use Stockfish with depth 20
+MULTIPLE ENGINE MODE:
+  --pool <name>         Use engine pool for random/varied play
+                        Available pools: ${Object.keys(ENGINE_POOLS).join(', ')}
+  --selection <type>    How to select engines: random, sequential, weighted, single
+                        Default: random
+  --switch-every <n>    Switch engine every N moves (default: 1, 0 = never)
 
-Interactive Commands (when not in auto mode):
-  Press Ctrl+C to stop the program
-  The system will analyze positions and suggest moves
+GENERAL OPTIONS:
+  --auto                Enable auto-play mode
+  --headless            Run browser in headless mode
+  --depth <n>           Engine search depth (default: 15)
+  --no-eval             Disable evaluation display
+  --no-highlight        Disable move highlighting
+
+INFO COMMANDS:
+  --list-engines        List all available engines
+  --list-pools          List all engine pools
+  --maia-setup          Show instructions for setting up Maia
+  --help                Show this help message
+
+EXAMPLES:
+
+  # Single engine (traditional mode)
+  npm start                                    # Stockfish WASM
+  npm start --engine maia-1500                # Maia 1500 (human-like)
+  npm start --engine lc0-default --depth 20   # Lc0 with depth 20
+
+  # Multiple engines (pool mode)
+  npm start --pool maia                       # Random Maia (1100/1500/1900)
+  npm start --pool all --selection random     # All engines randomly
+  npm start --pool strong --switch-every 5    # Strong engines, switch every 5 moves
+  npm start --pool human-like --auto          # Human-like play with auto-play
+
+  # Custom configurations
+  npm start --pool maia-varied --selection weighted
+  npm start --pool test --selection sequential --switch-every 3
+
+ENGINE POOLS:
+  stockfish     - Only Stockfish
+  maia          - All Maia models (1100, 1500, 1900)
+  maia-varied   - Weighted Maia (more beginner moves)
+  all           - All available engines
+  strong        - Strong engines only (Stockfish Native, Lc0)
+  human-like    - Mostly Maia with occasional strong play
+  test          - Testing pool (Stockfish WASM, Maia 1100)
+
+NOTES:
+  - Maia engines provide human-like play at different skill levels
+  - Pool mode allows mixing engines for varied playing styles
+  - Use --maia-setup for instructions on downloading Maia weights
   `);
 }
 
 // Main execution
 async function main() {
+  // Show configuration
+  console.log('\n===========================================');
+  console.log('Chess Automation System');
+  console.log('===========================================\n');
+
+  if (options.usePool) {
+    console.log('Mode: Multiple Engines (Pool)');
+    console.log(`Pool: ${options.pool}`);
+    console.log(`Selection: ${options.selection}`);
+    console.log(`Switch every: ${options.switchEvery} move(s)`);
+
+    const poolEngines = ENGINE_POOLS[options.pool];
+    if (poolEngines) {
+      console.log(`Engines in pool: ${poolEngines.join(', ')}`);
+    }
+  } else {
+    console.log('Mode: Single Engine');
+    console.log(`Engine: ${options.engine}`);
+  }
+
+  console.log(`Auto-play: ${options.autoPlay}`);
+  console.log(`Search depth: ${options.depth}`);
+  console.log(`Show evaluation: ${options.showEval}`);
+  console.log(`Highlight moves: ${options.highlight}`);
+  console.log('');
+
+  // Create automation instance
   const automation = new ChessAutomation({
     engineType: options.engine,
+    useEnginePool: options.usePool,
+    enginePool: options.pool,
+    engineSelection: options.selection,
+    engineSwitchEvery: options.switchEvery,
     autoPlay: options.autoPlay,
     headless: options.headless,
     engineDepth: options.depth,
@@ -82,9 +199,6 @@ async function main() {
   });
 
   try {
-    console.log('Starting Chess Automation System...');
-    console.log('Configuration:', options);
-
     // Initialize system
     await automation.init();
 
@@ -92,7 +206,7 @@ async function main() {
     await automation.navigateToChess();
 
     console.log('\n===========================================');
-    console.log('Chess Automation System is ready!');
+    console.log('System Ready!');
     console.log('===========================================\n');
 
     if (options.autoPlay) {
@@ -107,6 +221,9 @@ async function main() {
       console.log("  - The system will automatically detect when it's your turn");
       console.log('  - Best moves will be highlighted on the board');
       console.log('  - Evaluation will be shown in the corner');
+      if (options.usePool) {
+        console.log('  - Engine will be shown for each move');
+      }
       console.log('  - Press Ctrl+C to exit\n');
 
       // Interactive mode - analyze positions periodically
@@ -118,12 +235,15 @@ async function main() {
 
           // Only analyze if position changed
           if (fen !== lastFen) {
-            console.log('\nNew position detected!');
+            console.log('\n=== New Position Detected ===');
             lastFen = fen;
 
             const analysis = await automation.analyzePosition();
 
             console.log('FEN:', analysis.fen);
+            if (analysis.engineInfo) {
+              console.log(`Engine: ${analysis.engineInfo.name} (${analysis.engineInfo.id})`);
+            }
             console.log('Best move:', analysis.analysis.bestMove);
             console.log('Evaluation:', analysis.analysis.evaluation.toFixed(2));
             console.log('\nTop 3 moves:');
@@ -139,7 +259,7 @@ async function main() {
 
             // Show evaluation
             if (options.showEval) {
-              await automation.uiHighlighter.showEvaluation({
+              const evalData = {
                 score: analysis.analysis.evaluation,
                 bestMove: analysis.analysis.bestMove,
                 depth: analysis.analysis.depth,
@@ -147,7 +267,14 @@ async function main() {
                   move: c.move,
                   score: c.evaluation,
                 })),
-              });
+              };
+
+              // Add engine info if using pool
+              if (analysis.engineInfo) {
+                evalData.engine = analysis.engineInfo.name;
+              }
+
+              await automation.uiHighlighter.showEvaluation(evalData);
             }
           }
 
@@ -161,6 +288,9 @@ async function main() {
     }
   } catch (error) {
     console.error('Fatal error:', error);
+    if (error.message.includes('Lc0') || error.message.includes('Maia')) {
+      console.log('\nTo use Lc0/Maia engines, run: npm start --maia-setup');
+    }
   } finally {
     // Cleanup on exit
     await automation.cleanup();

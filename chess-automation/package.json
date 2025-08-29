@@ -9,6 +9,12 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
+    "setup:maia": "./scripts/setup-maia.sh",
+    "list:engines": "node src/index.js --list-engines",
+    "list:pools": "node src/index.js --list-pools",
+    "play:maia": "node src/index.js --pool maia --auto",
+    "play:random": "node src/index.js --pool all --selection random --auto",
+    "play:human": "node src/index.js --pool human-like",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["chess", "automation", "puppeteer", "stockfish"],

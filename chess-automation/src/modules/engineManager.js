@@ -5,6 +5,7 @@
 
 import { StockfishEngine } from './engines/stockfishEngine.js';
 import { StockfishAsmEngine } from './engines/stockfishAsmEngine.js';
+import { Lc0Engine } from './engines/lc0Engine.js';
 import { ENGINE_TYPES, ENGINE_DEFAULTS } from '../config/constants.js';
 
 export class EngineManager {
@@ -42,16 +43,20 @@ export class EngineManager {
         break;
 
       case ENGINE_TYPES.STOCKFISH:
+      case 'stockfish-native':
         this.currentEngine = new StockfishAsmEngine(this.config);
         break;
 
       case ENGINE_TYPES.LC0:
-        // Placeholder for Lc0 implementation
-        throw new Error('Lc0 engine not yet implemented');
+      case 'lc0':
+        this.currentEngine = new Lc0Engine(this.config);
+        break;
 
       case ENGINE_TYPES.MAIA:
-        // Placeholder for Maia implementation
-        throw new Error('Maia engine not yet implemented');
+      case 'maia':
+        // Maia uses Lc0 engine with special weights
+        this.currentEngine = new Lc0Engine(this.config);
+        break;
 
       default:
         throw new Error(`Unknown engine type: ${this.engineType}`);

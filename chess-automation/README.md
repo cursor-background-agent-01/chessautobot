@@ -1,14 +1,19 @@
 # Chess Automation System
 
-A modular Node.js chess automation system that can play on Chess.com using Puppeteer and various chess engines.
+A modular Node.js chess automation system that can play on Chess.com using Puppeteer with multiple chess engines including human-like Maia models.
 
 ## Features
 
+- **Multiple Engine Support**: Run multiple engines with random selection
+  - Stockfish (WASM and Native)
+  - Leela Chess Zero (Lc0)
+  - Maia (Human-like play at 1100, 1500, 1900 ELO levels)
+- **Engine Pools**: Mix and match engines for varied playing styles
+- **Dynamic Engine Switching**: Change engines mid-game
 - **Modular Architecture**: Clean separation of concerns with dedicated modules
-- **Multiple Engine Support**: Pluggable engine system (Stockfish WASM, Stockfish ASM.js, with support for Lc0 and Maia)
 - **Host-Side Evaluation**: All engine computation runs in Node.js, not in the browser
 - **Visual Feedback**: Move highlighting and evaluation display
-- **Human-like Behavior**: Configurable delays between moves
+- **Human-like Behavior**: Configurable delays between moves + Maia for realistic play
 - **Interactive & Auto Modes**: Can suggest moves or play automatically
 
 ## Project Structure
@@ -44,11 +49,18 @@ cd chess-automation
 # Install dependencies
 npm install
 
-# For Stockfish binary (optional, for StockfishAsmEngine)
-# Download from https://stockfishchess.org/download/
-# Or install via package manager:
+# For Maia (human-like play) - RECOMMENDED
+npm run setup:maia
+# Or manually:
+./scripts/setup-maia.sh
+
+# For Stockfish Native (optional, higher performance)
 # Ubuntu/Debian: sudo apt-get install stockfish
 # macOS: brew install stockfish
+
+# For Lc0 (required for Maia)
+# Ubuntu/Debian: sudo apt-get install lc0
+# macOS: brew install lc0
 ```
 
 ## Usage
@@ -74,32 +86,55 @@ npm start --auto
 ```bash
 npm start [options]
 
-Options:
-  --engine <type>    Chess engine to use (stockfish-wasm, stockfish)
-                     Default: stockfish-wasm
-  --auto             Enable auto-play mode
-  --headless         Run browser in headless mode
-  --depth <n>        Engine search depth (default: 15)
-  --no-eval          Disable evaluation display
-  --no-highlight     Disable move highlighting
-  --help             Show help message
+SINGLE ENGINE:
+  --engine <type>       Use specific engine (stockfish-wasm, maia-1500, etc.)
+
+MULTIPLE ENGINES:
+  --pool <name>         Use engine pool for varied play
+  --selection <type>    How to select engines (random, sequential, weighted)
+  --switch-every <n>    Switch engine every N moves
+
+OPTIONS:
+  --auto                Enable auto-play mode
+  --headless            Run browser in headless mode
+  --depth <n>           Engine search depth (default: 15)
+  --no-eval             Disable evaluation display
+  --no-highlight        Disable move highlighting
+  --list-engines        Show all available engines
+  --list-pools          Show all engine pools
+  --help                Show help message
 ```
 
-### Examples
+### Quick Start Examples
 
 ```bash
-# Interactive mode with Stockfish WASM
-npm start
+# Human-like play with Maia
+npm run play:human          # Interactive mode
+npm run play:maia           # Auto-play with Maia pool
 
-# Auto-play with Stockfish at depth 20
-npm start --auto --engine stockfish --depth 20
+# Random engine selection from all available
+npm run play:random
 
-# Headless mode for server environments
-npm start --auto --headless
+# Traditional single engine
+npm start                    # Stockfish WASM
+npm start --engine maia-1500 # Maia 1500 ELO
 
-# Minimal UI (no highlights or evaluation)
-npm start --no-eval --no-highlight
+# Advanced configurations
+npm start --pool strong --switch-every 5
+npm start --pool maia-varied --selection weighted
 ```
+
+### Engine Pools
+
+| Pool | Description | Engines |
+|------|-------------|---------|
+| `stockfish` | Traditional strong play | stockfish-wasm |
+| `maia` | Human-like at different levels | maia-1100, maia-1500, maia-1900 |
+| `maia-varied` | Weighted towards beginner | More maia-1100, some 1500/1900 |
+| `all` | Everything available | All enabled engines |
+| `strong` | Maximum strength | stockfish-native, lc0-default |
+| `human-like` | Realistic human play | Mostly Maia with occasional strong |
+| `test` | Development testing | stockfish-wasm, maia-1100 |
 
 ## API Usage
 

@@ -6,6 +6,7 @@
 import puppeteer from 'puppeteer';
 import { FenExtractor } from './modules/fenExtractor.js';
 import { EngineManager } from './modules/engineManager.js';
+import { EnginePoolManager } from './modules/enginePoolManager.js';
 import { MoveExecutor } from './modules/moveExecutor.js';
 import { UIHighlighter } from './modules/uiHighlighter.js';
 import { CHESS_COM_URL, ENGINE_TYPES } from './config/constants.js';
@@ -15,6 +16,10 @@ export class ChessAutomation {
     this.config = {
       headless: false,
       engineType: ENGINE_TYPES.STOCKFISH_WASM,
+      useEnginePool: false, // Use engine pool instead of single engine
+      enginePool: 'stockfish', // Which pool to use
+      engineSelection: 'random', // How to select engines
+      engineSwitchEvery: 1, // Switch engine every N moves
       showEvaluation: true,
       highlightMoves: true,
       autoPlay: false,
@@ -27,6 +32,7 @@ export class ChessAutomation {
     this.page = null;
     this.fenExtractor = null;
     this.engineManager = null;
+    this.enginePoolManager = null;
     this.moveExecutor = null;
     this.uiHighlighter = null;
     this.isPlaying = false;
@@ -35,6 +41,7 @@ export class ChessAutomation {
       lastMove: null,
       moveCount: 0,
       evaluation: null,
+      currentEngine: null,
     };
   }
 
@@ -71,14 +78,25 @@ export class ChessAutomation {
       this.moveExecutor = new MoveExecutor(this.page);
       this.uiHighlighter = new UIHighlighter(this.page);
 
-      // Initialize engine manager
-      this.engineManager = new EngineManager({
-        engine: this.config.engineType,
-        depth: this.config.engineDepth,
-        timeLimit: this.config.engineTime,
-        multiPV: 3,
-      });
-      await this.engineManager.init();
+      // Initialize engine manager or pool
+      if (this.config.useEnginePool) {
+        // Use engine pool for multiple engines
+        this.enginePoolManager = new EnginePoolManager({
+          pool: this.config.enginePool,
+          selection: this.config.engineSelection,
+          switchEvery: this.config.engineSwitchEvery,
+        });
+        await this.enginePoolManager.init();
+      } else {
+        // Use single engine
+        this.engineManager = new EngineManager({
+          engine: this.config.engineType,
+          depth: this.config.engineDepth,
+          timeLimit: this.config.engineTime,
+          multiPV: 3,
+        });
+        await this.engineManager.init();
+      }
 
       // Initialize UI highlighter if enabled
       if (this.config.highlightMoves) {
@@ -174,23 +192,44 @@ export class ChessAutomation {
       console.log('Current position:', fen);
       this.gameState.fen = fen;
 
-      // Analyze position
-      const analysis = await this.engineManager.analyzePosition(fen, {
-        depth: this.config.engineDepth,
-        time: this.config.engineTime,
-      });
+      // Analyze position with appropriate engine
+      let analysis;
+      let candidates = [];
+
+      if (this.config.useEnginePool) {
+        // Use engine pool
+        analysis = await this.enginePoolManager.analyzePosition(fen, {
+          depth: this.config.engineDepth,
+          time: this.config.engineTime,
+        });
+
+        // Store current engine info
+        this.gameState.currentEngine = this.enginePoolManager.getCurrentEngineInfo();
+        console.log(`Using engine: ${this.gameState.currentEngine?.name}`);
+
+        if (this.config.showEvaluation) {
+          candidates = await this.enginePoolManager.getCandidateMoves(fen, 3, {
+            depth: Math.min(this.config.engineDepth, 10),
+            time: Math.min(this.config.engineTime, 1000),
+          });
+        }
+      } else {
+        // Use single engine
+        analysis = await this.engineManager.analyzePosition(fen, {
+          depth: this.config.engineDepth,
+          time: this.config.engineTime,
+        });
+
+        if (this.config.showEvaluation) {
+          candidates = await this.engineManager.getCandidateMoves(fen, 3, {
+            depth: Math.min(this.config.engineDepth, 10),
+            time: Math.min(this.config.engineTime, 1000),
+          });
+        }
+      }
 
       console.log('Analysis:', analysis);
       this.gameState.evaluation = analysis.evaluation;
-
-      // Get candidate moves if configured
-      let candidates = [];
-      if (this.config.showEvaluation) {
-        candidates = await this.engineManager.getCandidateMoves(fen, 3, {
-          depth: Math.min(this.config.engineDepth, 10),
-          time: Math.min(this.config.engineTime, 1000),
-        });
-      }
 
       // Highlight moves if enabled
       if (this.config.highlightMoves && this.uiHighlighter) {
@@ -245,6 +284,9 @@ export class ChessAutomation {
    * Get engine status
    */
   getEngineStatus() {
+    if (this.config.useEnginePool) {
+      return this.enginePoolManager.getPoolInfo();
+    }
     return this.engineManager.getStatus();
   }
 
@@ -253,7 +295,11 @@ export class ChessAutomation {
    * @param {string} engineType - New engine type
    */
   async switchEngine(engineType) {
-    await this.engineManager.switchEngine(engineType);
+    if (this.config.useEnginePool) {
+      await this.enginePoolManager.switchToEngine(engineType);
+    } else {
+      await this.engineManager.switchEngine(engineType);
+    }
     console.log(`Switched to ${engineType} engine`);
   }
 
@@ -279,14 +325,25 @@ export class ChessAutomation {
    */
   async analyzePosition() {
     const fen = await this.fenExtractor.extractFEN();
-    const analysis = await this.engineManager.analyzePosition(fen);
-    const candidates = await this.engineManager.getCandidateMoves(fen, 5);
 
-    return {
-      fen,
-      analysis,
-      candidates,
-    };
+    if (this.config.useEnginePool) {
+      const analysis = await this.enginePoolManager.analyzePosition(fen);
+      const candidates = await this.enginePoolManager.getCandidateMoves(fen, 5);
+      return {
+        fen,
+        analysis,
+        candidates,
+        engineInfo: this.enginePoolManager.getCurrentEngineInfo(),
+      };
+    } else {
+      const analysis = await this.engineManager.analyzePosition(fen);
+      const candidates = await this.engineManager.getCandidateMoves(fen, 5);
+      return {
+        fen,
+        analysis,
+        candidates,
+      };
+    }
   }
 
   /**
@@ -301,6 +358,10 @@ export class ChessAutomation {
       if (this.uiHighlighter) {
         await this.uiHighlighter.hideEvaluation();
         await this.uiHighlighter.clearHighlights();
+      }
+
+      if (this.enginePoolManager) {
+        await this.enginePoolManager.cleanup();
       }
 
       if (this.engineManager) {

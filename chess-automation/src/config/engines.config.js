@@ -4,69 +4,13 @@
  */
 
 export const ENGINES_CONFIG = {
-  // Stockfish WASM - Maximum strength
-  'stockfish-wasm-max': {
-    name: 'Stockfish WASM (Max)',
-    type: 'stockfish-wasm',
-    enabled: true,
-    config: {
-      threads: 1,
-      hash: 16,
-      multiPV: 3,
-      depth: 18,
-      skill: 20, // Maximum skill
-    },
-  },
-
-  // Stockfish WASM - Strong (skill 18)
-  'stockfish-wasm-18': {
-    name: 'Stockfish WASM (Skill 18)',
-    type: 'stockfish-wasm',
-    enabled: true,
-    config: {
-      threads: 1,
-      hash: 16,
-      multiPV: 3,
-      depth: 15,
-      skill: 18,
-    },
-  },
-
-  // Stockfish WASM - Good (skill 15)
-  'stockfish-wasm-15': {
-    name: 'Stockfish WASM (Skill 15)',
-    type: 'stockfish-wasm',
-    enabled: true,
-    config: {
-      threads: 1,
-      hash: 16,
-      multiPV: 3,
-      depth: 12,
-      skill: 15,
-    },
-  },
-
-  // Stockfish WASM - Intermediate (skill 10)
-  'stockfish-wasm-10': {
-    name: 'Stockfish WASM (Skill 10)',
-    type: 'stockfish-wasm',
-    enabled: true,
-    config: {
-      threads: 1,
-      hash: 16,
-      multiPV: 3,
-      depth: 10,
-      skill: 10,
-    },
-  },
-
   // Stockfish Native - Maximum strength
   'stockfish-native-max': {
     name: 'Stockfish Native (Max)',
     type: 'stockfish-native',
     enabled: true,
     config: {
-      path: 'stockfish',
+      path: '/usr/games/stockfish',
       threads: 4,
       hash: 128,
       multiPV: 3,
@@ -81,7 +25,7 @@ export const ENGINES_CONFIG = {
     type: 'stockfish-native',
     enabled: true,
     config: {
-      path: 'stockfish',
+      path: '/usr/games/stockfish',
       threads: 4,
       hash: 128,
       multiPV: 3,
@@ -96,7 +40,7 @@ export const ENGINES_CONFIG = {
     type: 'stockfish-native',
     enabled: true,
     config: {
-      path: 'stockfish',
+      path: '/usr/games/stockfish',
       threads: 4,
       hash: 64,
       multiPV: 3,
@@ -216,26 +160,13 @@ export const ENGINES_CONFIG = {
     },
   },
 
-  // Legacy compatibility
-  'stockfish-wasm': {
-    name: 'Stockfish WASM',
-    type: 'stockfish-wasm',
-    enabled: true,
-    config: {
-      threads: 1,
-      hash: 16,
-      multiPV: 3,
-      depth: 15,
-      skill: 20,
-    },
-  },
-
+  // Default Stockfish Native
   'stockfish-native': {
     name: 'Stockfish Native',
     type: 'stockfish-native',
     enabled: true,
     config: {
-      path: 'stockfish',
+      path: '/usr/games/stockfish',
       threads: 4,
       hash: 128,
       multiPV: 3,
@@ -251,14 +182,10 @@ export const ENGINES_CONFIG = {
  */
 export const ENGINE_POOLS = {
   // Single Stockfish
-  stockfish: ['stockfish-wasm-max'],
+  stockfish: ['stockfish-native-max'],
 
   // All Stockfish variations
   'stockfish-varied': [
-    'stockfish-wasm-10',
-    'stockfish-wasm-15',
-    'stockfish-wasm-18',
-    'stockfish-wasm-max',
     'stockfish-native-12',
     'stockfish-native-17',
     'stockfish-native-max',
@@ -280,16 +207,11 @@ export const ENGINE_POOLS = {
   // THE ULTIMATE POOL - Everything with semi-random variations
   all: [
     // Stockfish variations (weighted)
-    'stockfish-wasm-10',
-    'stockfish-wasm-10',
-    'stockfish-wasm-15',
-    'stockfish-wasm-15',
-    'stockfish-wasm-15',
-    'stockfish-wasm-18',
-    'stockfish-wasm-18',
-    'stockfish-wasm-max',
+    'stockfish-native-12',
     'stockfish-native-12',
     'stockfish-native-17',
+    'stockfish-native-17',
+    'stockfish-native-max',
     'stockfish-native-max',
     // Maia variations (weighted)
     'maia-1100',
@@ -307,7 +229,7 @@ export const ENGINE_POOLS = {
   ],
 
   // Strong engines only
-  strong: ['stockfish-native-max', 'stockfish-wasm-max', 'lc0-default', 'maia-1900-strong'],
+  strong: ['stockfish-native-max', 'lc0-default', 'maia-1900-strong'],
 
   // Human-like with variations
   'human-like': [
@@ -317,21 +239,21 @@ export const ENGINE_POOLS = {
     'maia-1500',
     'maia-1500-focused',
     'maia-1900',
-    'stockfish-wasm-15',
+    'stockfish-native-17',
   ],
 
   // Beginner friendly
-  beginner: ['stockfish-wasm-10', 'maia-1100', 'maia-1100-random', 'stockfish-native-12'],
+  beginner: ['stockfish-native-12', 'maia-1100', 'maia-1100-random'],
 
   // Development/testing
-  test: ['stockfish-wasm-15', 'maia-1500'],
+  test: ['stockfish-native-17', 'maia-1500'],
 };
 
 /**
  * Dual analysis engines for manual mode
  */
 export const DUAL_ANALYSIS_ENGINES = {
-  stockfish: 'stockfish-wasm-max', // Maximum strength Stockfish for best moves
+  stockfish: 'stockfish-native-max', // Maximum strength Stockfish for best moves
   maia: 'maia-1500', // Human-like suggestions
 };
 

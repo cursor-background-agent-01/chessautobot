@@ -25,7 +25,6 @@ export const MOVE_DELAY = {
 
 export const ENGINE_TYPES = {
   STOCKFISH: 'stockfish',
-  STOCKFISH_WASM: 'stockfish-wasm',
   LC0: 'lc0',
   MAIA: 'maia',
 };

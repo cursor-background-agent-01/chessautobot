@@ -27,8 +27,7 @@
   "description": "Modular chess automation system for Chess.com using Puppeteer and various chess engines",
   "dependencies": {
     "chess.js": "^1.0.0-beta.8",
-    "puppeteer": "^23.11.1",
-    "stockfish.wasm": "^0.10.0"
+    "puppeteer": "^23.11.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

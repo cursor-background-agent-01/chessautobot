@@ -10,7 +10,7 @@ import { ENGINE_POOLS, ENGINES_CONFIG, ENGINE_SETUP_INSTRUCTIONS } from './confi
 // Command line argument parsing
 const args = process.argv.slice(2);
 const options = {
-  engine: ENGINE_TYPES.STOCKFISH_WASM,
+  engine: ENGINE_TYPES.STOCKFISH,
   usePool: false,
   pool: 'stockfish',
   selection: 'random',
@@ -27,7 +27,7 @@ const options = {
 for (let i = 0; i < args.length; i++) {
   switch (args[i]) {
     case '--engine':
-      options.engine = args[++i] || ENGINE_TYPES.STOCKFISH_WASM;
+      options.engine = args[++i] || ENGINE_TYPES.STOCKFISH;
       break;
     case '--pool':
       options.usePool = true;

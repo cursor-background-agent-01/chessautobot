@@ -3,7 +3,6 @@
  * Manages different chess engines and provides a unified interface
  */
 
-import { StockfishEngine } from './engines/stockfishEngine.js';
 import { StockfishAsmEngine } from './engines/stockfishAsmEngine.js';
 import { Lc0Engine } from './engines/lc0Engine.js';
 import { ENGINE_TYPES, ENGINE_DEFAULTS } from '../config/constants.js';
@@ -15,7 +14,7 @@ export class EngineManager {
       ...config,
     };
     this.currentEngine = null;
-    this.engineType = config.engine || ENGINE_TYPES.STOCKFISH_WASM;
+    this.engineType = config.engine || ENGINE_TYPES.STOCKFISH;
     this.analysisHistory = [];
   }
 
@@ -38,10 +37,6 @@ export class EngineManager {
 
     // Create and initialize the appropriate engine
     switch (this.engineType) {
-      case ENGINE_TYPES.STOCKFISH_WASM:
-        this.currentEngine = new StockfishEngine(this.config);
-        break;
-
       case ENGINE_TYPES.STOCKFISH:
       case 'stockfish-native':
         this.currentEngine = new StockfishAsmEngine(this.config);
